@@ -88,12 +88,11 @@ with st.sidebar:
         final_weights = raw_weights
 
     weights_dict = dict(zip(tickers, final_weights))
-    monthly_budget = st.number_input("Monthly Base Budget ($)", value=3000, step=100)
     
 # --- 3. PAGE ROUTING ---
 if page == "The Manifesto":
     show_manifesto_page()
 elif page == "Action Dashboard":
-    show_dashboard_page(tickers, weights_dict, monthly_budget)
+    show_dashboard_page(tickers, weights_dict)
 elif page == "Backtest Performance":
-    show_backtest_page(tickers, weights_dict, monthly_budget)
+    show_backtest_page(tickers, weights_dict)

@@ -58,9 +58,11 @@ def show_manifesto_page():
         </div>
         """, unsafe_allow_html=True)
 
-def show_dashboard_page(tickers, weights_dict, monthly_budget):
+def show_dashboard_page(tickers, weights_dict):
     st.title("Action Dashboard")
     st.markdown("Your live command center. Run this on payday.")
+    
+    contribution_budget = st.number_input("Contribution Budget ($)", value=3000, step=100, key="dashboard_budget")
     
     if st.button("Analyze Current Market"):
         end_d = datetime.now()
@@ -80,8 +82,8 @@ def show_dashboard_page(tickers, weights_dict, monthly_budget):
                                 <div style="font-size:1.8rem; font-weight:700;">{current_vix:.2f}</div>
                               </div>""", unsafe_allow_html=True)
                 c2.markdown(f"""<div style="color:{COLOR_DARK};">
-                                <div style="font-size:0.9rem; margin-bottom:6px;">Base Monthly Budget</div>
-                                <div style="font-size:1.8rem; font-weight:700;">${monthly_budget:,.0f}</div>
+                                <div style="font-size:0.9rem; margin-bottom:6px;">Contribution Budget</div>
+                                <div style="font-size:1.8rem; font-weight:700;">${contribution_budget:,.0f}</div>
                               </div>""", unsafe_allow_html=True)
                 
                 action_data = []
@@ -91,7 +93,7 @@ def show_dashboard_page(tickers, weights_dict, monthly_budget):
                     if t not in data_map: continue
                     curr = data_map[t].iloc[-1]
                     price = curr['Close']
-                    base_amt = monthly_budget * (weights_dict[t] / 100)
+                    base_amt = contribution_budget * (weights_dict[t] / 100)
                     
                     inds = {'MA200': curr['MA200'], 'MA50': curr['MA50'], 
                             'BB_Lower': curr['BB_Lower'], 'BB_Upper': curr['BB_Upper'], 
@@ -112,12 +114,49 @@ def show_dashboard_page(tickers, weights_dict, monthly_budget):
                                 Total Capital to Deploy: ${total_suggested:,.2f}
                               </div>""", unsafe_allow_html=True)
 
-def show_backtest_page(tickers, weights_dict, monthly_budget):
+def show_backtest_page(tickers, weights_dict):
     st.title("Strategy Backtest")
     
+    # Date range inputs
     c1, c2 = st.columns(2)
     start_date = c1.date_input("Start Date", value=datetime(2020, 1, 1))
     end_date = c2.date_input("End Date", value=datetime.now())
+    
+    # New flexible investment parameters
+    st.markdown("### Investment Parameters")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        initial_investment = st.number_input(
+            "Initial Investment ($)", 
+            value=0, 
+            step=1000, 
+            help="One-time investment at the start of the backtest period"
+        )
+    
+    with col2:
+        contribution_frequency = st.selectbox(
+            "Contribution Frequency",
+            ["monthly", "weekly"],
+            help="How often to make regular contributions",
+            key="backtest_contribution_frequency"
+        )
+    
+    with col3:
+        contribution_amount = st.number_input(
+            "Contribution Amount ($)",
+            value=3000,
+            step=100,
+            help="Amount to invest per contribution period",
+            key="backtest_contribution_amount"
+        )
+    
+    with col4:
+        enable_rebalancing = st.checkbox(
+            "Enable Rebalancing", 
+            value=False,
+            help="Rebalance portfolio annually to maintain target weights"
+        )
     
     if start_date >= end_date:
         st.error("Start Date must be before End Date.")
@@ -128,7 +167,8 @@ def show_backtest_page(tickers, weights_dict, monthly_budget):
             if not data_map:
                 st.error("No data found for this range.")
             else:
-                res = run_portfolio_backtest(data_map, weights_dict, monthly_budget)
+                res = run_portfolio_backtest(data_map, weights_dict, contribution_amount, 
+                                           initial_investment, enable_rebalancing, contribution_frequency)
                 if not res:
                     st.error("Data mismatch or empty result.")
                 else:
@@ -169,8 +209,27 @@ def show_backtest_page(tickers, weights_dict, monthly_budget):
                     fig = go.Figure()
                     fig.add_trace(go.Scatter(x=res['dates'], y=res['std_val'], name="Standard", line=dict(color=COLOR_ACCENT)))
                     fig.add_trace(go.Scatter(x=res['dates'], y=res['smart_val'], name="Smart", line=dict(color=COLOR_DARK, width=3)))
-                    fig.update_layout(title="Wealth Growth", hovermode="x unified", height=500, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                    
+                    # Add rebalancing event markers if enabled
+                    if enable_rebalancing and res['rebalancing_events']:
+                        for rebal_date in res['rebalancing_events']:
+                            # Find corresponding value for the rebalancing date
+                            date_idx = res['dates'].get_indexer([rebal_date], method='nearest')[0]
+                            if date_idx < len(res['smart_val']):
+                                fig.add_vline(x=rebal_date, line_dash="dash", line_color="orange", 
+                                            annotation_text="Rebalanced", annotation_position="top")
+                    
+                    chart_title = f"Wealth Growth ({contribution_frequency.title()} Contributions)"
+                    fig.update_layout(title=chart_title, hovermode="x unified", height=500, 
+                                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Additional statistics
+                    if res['rebalancing_events']:
+                        st.info(f"Portfolio was rebalanced {len(res['rebalancing_events'])} times during the backtest period.")
+                    
+                    if initial_investment > 0:
+                        st.info(f"Initial investment of ${initial_investment:,.0f} was included at the start of the period.")
 
     st.markdown("---")
     st.subheader("Historical Trade Inspector")
@@ -213,7 +272,7 @@ def show_backtest_page(tickers, weights_dict, monthly_budget):
                             'RSI': curr['RSI'], 'MACD_Hist': curr['MACD_Hist']}
                     
                     mult, reason = get_strategy_multiplier(price, inds, vix_val)
-                    base_amt = monthly_budget * (weights_dict.get(t, 0) / 100)
+                    base_amt = contribution_amount * (weights_dict.get(t, 0) / 100)
                     final_amt = base_amt * mult
                     
                     insp_res.append({
@@ -227,4 +286,5 @@ def show_backtest_page(tickers, weights_dict, monthly_budget):
                     })
                 
                 st.success(f"**Market Conditions on {inspect_date}: VIX = {vix_val:.2f}**")
+                st.info(f"Note: Amounts shown are based on ${contribution_amount:,.0f} contribution amount.")
                 st.dataframe(pd.DataFrame(insp_res), use_container_width=True)
