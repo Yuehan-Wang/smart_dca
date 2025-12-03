@@ -8,7 +8,7 @@ from analysis import get_strategy_multiplier
 from backtest import run_portfolio_backtest
 
 def show_manifesto_page():
-    st.title("The Alpha Manifesto")
+    st.title("The Manifesto")
     st.markdown("### Why Average is for Everyone Else")
     st.markdown("---")
     
