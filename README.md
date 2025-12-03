@@ -1,5 +1,7 @@
 # Smart DCA Portfolio Manager
 
+**[Live Demo](https://yuehan-wang-smart-dca-app-cujodf.streamlit.app/)**
+
 A Streamlit web application designed to implement and backtest a dynamic Dollar-Cost Averaging (DCA) strategy. Instead of investing a fixed amount on a fixed schedule, this tool adjusts your investment based on market conditions, aiming to buy more during downturns and less during periods of euphoria.
 
 ## Key Features
