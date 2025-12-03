@@ -3,3 +3,5 @@ pandas
 numpy
 yfinance
 plotly
+requests
+python-dotenv

@@ -6,6 +6,9 @@ from config import COLOR_DARK, COLOR_MAIN, COLOR_ACCENT
 from data_handler import fetch_data
 from analysis import get_strategy_multiplier
 from backtest import run_portfolio_backtest
+from subscription_manager import add_subscription, get_subscription, remove_subscription
+from email_service import send_confirmation_email
+import os
 
 def show_manifesto_page():
     st.title("The Manifesto")
@@ -113,6 +116,90 @@ def show_dashboard_page(tickers, weights_dict):
                 st.markdown(f"""<div style="color:{COLOR_DARK}; font-weight:700; font-size:1.1rem;">
                                 Total Capital to Deploy: ${total_suggested:,.2f}
                               </div>""", unsafe_allow_html=True)
+    
+    # Email Subscription Section
+    st.markdown("---")
+    st.subheader("📧 Email Subscription")
+    st.markdown("Get automated investment recommendations delivered to your inbox!")
+    
+    if st.button("Subscribe for Email Notifications", key="btn_show_subscription"):
+        st.session_state['show_subscription'] = not st.session_state.get('show_subscription', False)
+    
+    if st.session_state.get('show_subscription', False):
+        st.markdown("""
+        Subscribe to receive weekly email recommendations based on your portfolio configuration.
+        You'll receive emails on the **first and last day** of each selected week (e.g., selecting Week 1 sends emails on the 1st and 7th of each month).
+        """)
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            email_input = st.text_input("Email Address", placeholder="your.email@example.com", key="sub_email")
+        
+        with col2:
+            st.write("Send emails on:")
+            week_selections = []
+            cols = st.columns(4)
+            for i, col in enumerate(cols):
+                with col:
+                    if st.checkbox(f"Week {i+1}", key=f"week_{i+1}"):
+                        week_selections.append(i+1)
+        
+        if email_input and week_selections:
+            col_sub, col_unsub = st.columns(2)
+            
+            with col_sub:
+                if st.button("Subscribe / Update", use_container_width=True, key="btn_subscribe"):
+                    if '@' in email_input and '.' in email_input:
+                        result = add_subscription(
+                            email_input,
+                            tickers,
+                            weights_dict,
+                            contribution_budget,
+                            week_selections
+                        )
+                        
+                        # Send confirmation email
+                        try:
+                            from dotenv import load_dotenv
+                            load_dotenv()
+                            
+                            api_key = os.environ.get('RESEND_API_KEY')
+                            from_email = os.environ.get('FROM_EMAIL', 'Smart DCA <onboarding@resend.dev>')
+                            
+                            if api_key:
+                                email_config = {
+                                    'api_key': api_key,
+                                    'from_email': from_email
+                                }
+                                send_confirmation_email(
+                                    email_input,
+                                    tickers,
+                                    contribution_budget,
+                                    week_selections,
+                                    email_config
+                                )
+                                if result == "added":
+                                    st.success(f"✅ Subscribed! Check your email for confirmation. You'll receive recommendations on the first and last day of Week {', Week '.join(map(str, week_selections))}")
+                                else:
+                                    st.success(f"✅ Subscription updated! Check your email for confirmation. You'll receive recommendations on the first and last day of Week {', Week '.join(map(str, week_selections))}")
+                            else:
+                                st.warning("Subscribed, but confirmation email not sent (API key not configured)")
+                        except Exception as e:
+                            st.warning(f"Subscribed, but confirmation email failed: {str(e)}")
+                    else:
+                        st.error("Please enter a valid email address")
+            
+            with col_unsub:
+                if st.button("Unsubscribe", use_container_width=True):
+                    remove_subscription(email_input)
+                    st.success("Unsubscribed successfully!")
+        
+        elif email_input and not week_selections:
+            st.warning("Please select at least one week to receive emails.")
+        
+        st.markdown("---")
+        st.caption("**Note:** Emails are sent on the first and last day of selected weeks (e.g., Week 1 = 1st & 7th, Week 2 = 8th & 14th, Week 3 = 15th & 21st, Week 4 = 22nd & last day). Make sure your portfolio settings are correctly configured before subscribing.")
 
 def show_backtest_page(tickers, weights_dict):
     st.title("Strategy Backtest")
