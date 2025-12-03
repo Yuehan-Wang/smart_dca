@@ -119,7 +119,7 @@ def show_dashboard_page(tickers, weights_dict):
     
     # Email Subscription Section
     st.markdown("---")
-    st.subheader("📧 Email Subscription")
+    st.subheader("Email Subscription")
     st.markdown("Get automated investment recommendations delivered to your inbox!")
     
     if st.button("Subscribe for Email Notifications", key="btn_show_subscription"):
