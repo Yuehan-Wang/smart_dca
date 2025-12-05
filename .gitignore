@@ -4,3 +4,5 @@ env/
 venv/
 subscriptions.json
 .env
+.streamlit/
+DS_Store
