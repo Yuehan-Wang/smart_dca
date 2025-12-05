@@ -51,6 +51,7 @@ def show_manifesto_page():
         """, unsafe_allow_html=True)
 
     with col2:
+        # 1. The Warren Buffett Quote Box
         st.markdown(f"""
         <div style="background-color:{COLOR_DARK}; padding:20px; border-radius:10px; color:white;">
             <h2 style="color:{COLOR_ACCENT} !important; margin-top:0;">Remember</h2>
@@ -58,6 +59,19 @@ def show_manifesto_page():
             <p align="right" style="color:white;">- Warren Buffett</p>
             <hr style="border-color:{COLOR_MAIN}">
             <p style="color:white;"><b>This tool is your discipline.</b></p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 2. The New Research Link (Added Here)
+        st.markdown(f"""
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="https://www.yuehan.space/post/smart_dca" target="_blank" style="text-decoration: none;">
+                <div style="background-color: white; border: 1px solid #ddd; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s;">
+                    <span style="font-size: 1.5rem;"></span><br>
+                    <strong style="color: {COLOR_MAIN}; font-size: 1.1rem;">Read the Full Report</strong><br>
+                    <span style="font-size: 0.85rem; color: #666;">See the math & performance comparison vs. Standard DCA.</span>
+                </div>
+            </a>
         </div>
         """, unsafe_allow_html=True)
         
