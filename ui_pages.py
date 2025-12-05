@@ -34,7 +34,9 @@ def show_manifesto_page():
         <h3>The 4 Laws of the Algorithm</h3>
         <div class="law-box">
             <span class="law-title">1. The Law of Crisis (VIX > 30 or < MA200 w/ Confluence)</span>
-            <strong>Blood in the streets</strong> is the greatest gift. We deploy <strong>Maximum Capital (2.0x)</strong> on high VIX. We also hunt for <strong>Deep Value (1.6x)</strong> when price is below the 200-day average, <em>but only if verified by low RSI (< 40)</em> to avoid "catching a falling knife."
+            <strong>Blood in the streets</strong> is the greatest gift. We deploy <strong>Maximum Capital (2.0x)</strong> on high VIX. We also hunt for <strong>Deep Value (1.6x)</strong> when price is below the 200-day average.
+            <br><br>
+            <em>Crucial Update:</em> We added a <strong>"No Falling Knives"</strong> guard. If the asset is crashing (Red Impulse), we <strong>wait</strong> (1.0x). We only deploy the 1.6x multiplier when the momentum stabilizes (Blue/Green Impulse).
         </div>
         <div class="law-box">
             <span class="law-title">2. The Law of Opportunity (RSI < 35)</span>
@@ -62,7 +64,7 @@ def show_manifesto_page():
         </div>
         """, unsafe_allow_html=True)
         
-        # 2. The New Research Link (Added Here)
+        # 2. The Research Link
         st.markdown(f"""
         <div style="margin-top: 20px; text-align: center;">
             <a href="https://www.yuehan.space/post/smart_dca" target="_blank" style="text-decoration: none;">

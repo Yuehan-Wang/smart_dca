@@ -57,25 +57,31 @@ def calculate_indicators(df):
 def get_strategy_multiplier(price, indicators, vix_val):
     """Returns (multiplier, reason) based on the Strategy Logic."""
     
-    # HANDLE NAN VALUES (For new stocks like CRCL)
-    # If MA200 is NaN, we treat it as infinite (price is effectively "below" nothing, so logic fails safe)
-    # Actually, if MA200 is NaN, we cannot determine trend, so we skip the "Deep Value" check.
+    # HANDLE NAN VALUES (For new stocks)
     ma200 = indicators.get('MA200', np.nan)
-    rsi = indicators.get('RSI', 50) # Default to 50 if missing
+    rsi = indicators.get('RSI', 50)
+    impulse = indicators.get('Impulse', 'Blue') # Default to Blue if missing
     
-    # 1. CRISIS MODE
+    # 1. CRISIS MODE (Global Panic)
+    # We keep this: If the whole world is ending (VIX > 30), we buy everything.
     if vix_val > 30:
         return 2.0, "PANIC BUY (VIX > 30)"
         
-    # Crisis Law: Price < MA200 AND RSI < 40
-    # We check pd.notna(ma200) to ensure the moving average actually exists
+    # 2. DEEP VALUE (Individual Stock Crash)
+    # FIX: "No Falling Knives" Rule
     if pd.notna(ma200) and price < ma200:
         if rsi < 40:
-            return 1.6, "DEEP VALUE (< MA200 & RSI < 40)"
+            # CHECK: Is the knife still falling fast? (Impulse Red)
+            if impulse == 'Red':
+                return 1.0, "FALLING KNIFE (Impulse Red - Wait)"
+            else:
+                # Impulse is Blue (Neutral) or Green (Rebound) -> NOW we strike.
+                return 1.6, "DEEP VALUE (Stabilized)"
         else:
+            # Below MA200 but RSI is not oversold -> No action (Standard)
             pass 
 
-    # 2. OPPORTUNITY
+    # 3. OPPORTUNITY
     bb_lower = indicators.get('BB_Lower', np.nan)
     if pd.notna(bb_lower) and price < bb_lower:
         return 1.4, "OVERSOLD (Below BB)"
@@ -87,17 +93,16 @@ def get_strategy_multiplier(price, indicators, vix_val):
     if pd.notna(ma50) and price < ma50:
         return 1.2, "DIP BUY (< MA50)"
 
-    # 3. TREND CORRECTOR (IMPULSE MACD)
-    impulse = indicators.get('Impulse', 'Blue')
+    # 4. TREND CORRECTOR (IMPULSE MACD)
     if rsi > 70:
         if impulse == 'Green':
             return 1.0, "STRONG MOMENTUM (Impulse Green)"
         else:
             return 0.6, "MOMENTUM FADING (Impulse Red/Blue)"
             
-    # 4. EXTREME EUPHORIA
+    # 5. EXTREME EUPHORIA
     if rsi > 85:
         return 0.6, "EXTREME EUPHORIA (RSI > 85)"
 
-    # 5. STANDARD
+    # 6. STANDARD
     return 1.0, "STANDARD"

@@ -19,7 +19,8 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
     if contribution_frequency == 'weekly':
         contrib_dates = common_index.to_series().resample('W').last().index
     else:  # monthly
-        contrib_dates = common_index.to_series().resample('M').last().index
+        # FIX: Changed 'M' to 'ME' (Month End) to resolve Pandas deprecation warning
+        contrib_dates = common_index.to_series().resample('ME').last().index
     
     std_hist, smart_hist = [], []
     std_inv, smart_inv = 0, 0
@@ -66,7 +67,7 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
             # --- Smart DCA ---
             vix_val = row['VIX']
             
-            # UPDATED: Added Impulse to indicators dictionary so Analysis.py can see it
+            # Ensure Impulse is passed (from previous fix)
             inds = {'MA200': row['MA200'], 'MA50': row['MA50'], 
                     'BB_Lower': row['BB_Lower'], 'BB_Upper': row['BB_Upper'], 
                     'RSI': row['RSI'], 'MACD_Hist': row['MACD_Hist'],
