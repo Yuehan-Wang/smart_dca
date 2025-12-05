@@ -33,20 +33,20 @@ def show_manifesto_page():
         
         <h3>The 4 Laws of the Algorithm</h3>
         <div class="law-box">
-            <span class="law-title">1. The Law of Crisis (VIX > 30 or < MA200)</span>
-            <strong>Blood in the streets</strong> is the greatest gift, demanding you deploy <strong>Maximum Capital (1.6x - 2.0x)</strong> when others panic.
+            <span class="law-title">1. The Law of Crisis (VIX > 30 or < MA200 w/ Confluence)</span>
+            <strong>Blood in the streets</strong> is the greatest gift. We deploy <strong>Maximum Capital (2.0x)</strong> on high VIX. We also hunt for <strong>Deep Value (1.6x)</strong> when price is below the 200-day average, <em>but only if verified by low RSI (< 40)</em> to avoid "catching a falling knife."
         </div>
         <div class="law-box">
-            <span class="law-title">2. The Law of Opportunity (RSI < 30)</span>
-            Buy the <strong>Dip (1.4x)</strong> aggressively, recognizing that oversold prices are a strategic entry point for sound assets.
+            <span class="law-title">2. The Law of Opportunity (RSI < 35)</span>
+            Buy the <strong>Dip (1.4x)</strong> aggressively. We raised our sensitivity threshold to <strong>RSI 35</strong> to capture more buying opportunities during healthy bull market pullbacks.
         </div>
         <div class="law-box">
             <span class="law-title">3. The Law of Trend (MA50)</span>
             A strong asset's pullback is a chance to fortify your position, so <strong>Add to Winners (1.2x)</strong> when price nears the primary trend.
         </div>
         <div class="law-box">
-            <span class="law-title">4. The Law of True Strength (RSI > 70 Filter)</span>
-            Hold firm at standard buying power (1.0x) only when MACD confirms high-RSI <strong>Momentum</strong>, cutting back to <strong>(0.6x)</strong> when true strength fades.
+            <span class="law-title">4. The Law of True Strength (Impulse MACD)</span>
+            When the market is hot (RSI > 70), we consult the <strong>Impulse System</strong>. If the bars are <strong>Green</strong> (Rising Momentum + Inertia), we hold standard buying (1.0x). If the bars turn <strong>Blue or Red</strong>, we cut back (0.6x) immediately to protect capital.
         </div>
         """, unsafe_allow_html=True)
 
@@ -98,9 +98,11 @@ def show_dashboard_page(tickers, weights_dict):
                     price = curr['Close']
                     base_amt = contribution_budget * (weights_dict[t] / 100)
                     
+                    # UPDATED: Pass Impulse to strategy
                     inds = {'MA200': curr['MA200'], 'MA50': curr['MA50'], 
                             'BB_Lower': curr['BB_Lower'], 'BB_Upper': curr['BB_Upper'], 
-                            'RSI': curr['RSI'], 'MACD_Hist': curr['MACD_Hist']}
+                            'RSI': curr['RSI'], 'MACD_Hist': curr['MACD_Hist'],
+                            'Impulse': curr['Impulse']}
                     
                     mult, reason = get_strategy_multiplier(price, inds, current_vix)
                     final_amt = base_amt * mult
@@ -180,9 +182,9 @@ def show_dashboard_page(tickers, weights_dict):
                                     email_config
                                 )
                                 if result == "added":
-                                    st.success(f"Subscribed! Check your email for confirmation. You'll receive recommendations on the first and last day of Week {', Week '.join(map(str, week_selections))}")
+                                    st.success(f"Subscribed! Check your email for confirmation.")
                                 else:
-                                    st.success(f"Subscription updated! Check your email for confirmation. You'll receive recommendations on the first and last day of Week {', Week '.join(map(str, week_selections))}")
+                                    st.success(f"Subscription updated! Check your email for confirmation.")
                             else:
                                 st.warning("Subscribed, but confirmation email not sent (API key not configured)")
                         except Exception as e:
@@ -221,7 +223,7 @@ def show_dashboard_page(tickers, weights_dict):
             st.warning("Please select at least one week to receive emails.")
         
         st.markdown("---")
-        st.caption("**Note:** Emails are sent on the first and last day of selected weeks (e.g., Week 1 = 1st & 7th, Week 2 = 8th & 14th, Week 3 = 15th & 21st, Week 4 = 22nd & last day). Make sure your portfolio settings are correctly configured before subscribing.")
+        st.caption("**Note:** Emails are sent on the first and last day of selected weeks.")
 
 def show_backtest_page(tickers, weights_dict):
     st.title("Strategy Backtest")
@@ -325,8 +327,10 @@ def show_backtest_page(tickers, weights_dict):
                             # Find corresponding value for the rebalancing date
                             date_idx = res['dates'].get_indexer([rebal_date], method='nearest')[0]
                             if date_idx < len(res['smart_val']):
-                                fig.add_vline(x=rebal_date, line_dash="dash", line_color="orange", 
+                                # --- FIX START: Convert Pandas Timestamp to MS Timestamp for Plotly/Pandas 2.0 Compatibility ---
+                                fig.add_vline(x=rebal_date.timestamp() * 1000, line_dash="dash", line_color="orange", 
                                             annotation_text="Rebalanced", annotation_position="top")
+                                # --- FIX END ---
                     
                     chart_title = f"Wealth Growth ({contribution_frequency.title()} Contributions)"
                     fig.update_layout(title=chart_title, hovermode="x unified", height=500, 
@@ -376,9 +380,12 @@ def show_backtest_page(tickers, weights_dict):
                     curr = df.iloc[-1]
                     price = curr['Close']
                     actual_date = curr.name.strftime('%Y-%m-%d')
+                    
+                    # UPDATED: Added Impulse to inspector
                     inds = {'MA200': curr['MA200'], 'MA50': curr['MA50'], 
                             'BB_Lower': curr['BB_Lower'], 'BB_Upper': curr['BB_Upper'], 
-                            'RSI': curr['RSI'], 'MACD_Hist': curr['MACD_Hist']}
+                            'RSI': curr['RSI'], 'MACD_Hist': curr['MACD_Hist'],
+                            'Impulse': curr['Impulse']}
                     
                     mult, reason = get_strategy_multiplier(price, inds, vix_val)
                     base_amt = contribution_amount * (weights_dict.get(t, 0) / 100)
@@ -389,6 +396,7 @@ def show_backtest_page(tickers, weights_dict):
                         "Data Date": actual_date,
                         "Price": f"${price:.2f}",
                         "RSI": f"{curr['RSI']:.1f}",
+                        "Impulse": curr['Impulse'],
                         "Signal": reason,
                         "Action": f"{mult}x",
                         "Invest Amount": f"${final_amt:.0f}"

@@ -15,7 +15,7 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
         else: common_index = common_index.intersection(df.index)
     
     if common_index is None or len(common_index) == 0: return None
-    # Resample based on contribution frequency
+    
     if contribution_frequency == 'weekly':
         contrib_dates = common_index.to_series().resample('W').last().index
     else:  # monthly
@@ -65,9 +65,12 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
             
             # --- Smart DCA ---
             vix_val = row['VIX']
+            
+            # UPDATED: Added Impulse to indicators dictionary so Analysis.py can see it
             inds = {'MA200': row['MA200'], 'MA50': row['MA50'], 
                     'BB_Lower': row['BB_Lower'], 'BB_Upper': row['BB_Upper'], 
-                    'RSI': row['RSI'], 'MACD_Hist': row['MACD_Hist']}
+                    'RSI': row['RSI'], 'MACD_Hist': row['MACD_Hist'],
+                    'Impulse': row['Impulse']}
             
             mult, _ = get_strategy_multiplier(price, inds, vix_val)
             smart_alloc = (period_budget * norm_weights[t]) * mult
@@ -76,10 +79,9 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
             smart_inv += smart_alloc
             smart_val += smart_holdings[t] * price
         
-        # Rebalancing logic (quarterly for example)
+        # Rebalancing logic
         rebalanced = False
         if enable_rebalancing and i % (12 if contribution_frequency == 'monthly' else 52) == 0 and i > 0:
-            # Rebalance smart portfolio to target weights
             total_smart_value = sum(smart_holdings[t] * tickers_data[t].iloc[tickers_data[t].index.get_indexer([date], method='nearest')[0]]['Close'] 
                                   for t in tickers_data.keys() if t in smart_holdings)
             
