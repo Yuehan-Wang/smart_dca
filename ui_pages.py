@@ -60,7 +60,7 @@ def show_manifesto_page():
             <p style="color:white;"><b>This tool is your discipline.</b></p>
         </div>
         """, unsafe_allow_html=True)
-
+        
 def show_dashboard_page(tickers, weights_dict):
     st.title("Action Dashboard")
     st.markdown("Your live command center. Run this on payday.")
