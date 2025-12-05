@@ -7,7 +7,7 @@ from data_handler import fetch_data
 from analysis import get_strategy_multiplier
 from backtest import run_portfolio_backtest
 from subscription_manager import add_subscription, get_subscription, remove_subscription
-from email_service import send_confirmation_email
+from email_service import send_confirmation_email, send_unsubscribe_email
 import os
 
 def show_manifesto_page():
@@ -174,15 +174,15 @@ def show_dashboard_page(tickers, weights_dict):
                                 }
                                 send_confirmation_email(
                                     email_input,
-                                    tickers,
+                                    weights_dict, 
                                     contribution_budget,
                                     week_selections,
                                     email_config
                                 )
                                 if result == "added":
-                                    st.success(f"✅ Subscribed! Check your email for confirmation. You'll receive recommendations on the first and last day of Week {', Week '.join(map(str, week_selections))}")
+                                    st.success(f"Subscribed! Check your email for confirmation. You'll receive recommendations on the first and last day of Week {', Week '.join(map(str, week_selections))}")
                                 else:
-                                    st.success(f"✅ Subscription updated! Check your email for confirmation. You'll receive recommendations on the first and last day of Week {', Week '.join(map(str, week_selections))}")
+                                    st.success(f"Subscription updated! Check your email for confirmation. You'll receive recommendations on the first and last day of Week {', Week '.join(map(str, week_selections))}")
                             else:
                                 st.warning("Subscribed, but confirmation email not sent (API key not configured)")
                         except Exception as e:
@@ -191,9 +191,31 @@ def show_dashboard_page(tickers, weights_dict):
                         st.error("Please enter a valid email address")
             
             with col_unsub:
-                if st.button("Unsubscribe", use_container_width=True):
-                    remove_subscription(email_input)
-                    st.success("Unsubscribed successfully!")
+                with col_unsub:
+                    if st.button("Unsubscribe", use_container_width=True):
+                        # 1. Remove from database
+                        remove_subscription(email_input)
+                        
+                        # 2. Send Confirmation Email
+                        try:
+                            from dotenv import load_dotenv
+                            load_dotenv()
+                            
+                            api_key = os.environ.get('RESEND_API_KEY')
+                            from_email = os.environ.get('FROM_EMAIL', 'Smart DCA <onboarding@resend.dev>')
+                            
+                            if api_key:
+                                email_config = {
+                                    'api_key': api_key,
+                                    'from_email': from_email
+                                }
+                                send_unsubscribe_email(email_input, email_config)
+                                st.success("Unsubscribed successfully! Confirmation email sent.")
+                            else:
+                                st.success("Unsubscribed successfully! (Email failed: No API Key)")
+                                
+                        except Exception as e:
+                            st.warning(f"Unsubscribed locally, but email failed: {e}")
         
         elif email_input and not week_selections:
             st.warning("Please select at least one week to receive emails.")

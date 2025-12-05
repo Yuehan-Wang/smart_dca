@@ -4,21 +4,69 @@ import requests
 from data_handler import fetch_data
 from analysis import get_strategy_multiplier
 import calendar
+import json
+import urllib.parse
 
-def send_confirmation_email(to_email, tickers, budget, selected_weeks, email_config):
-    """Send a confirmation email when user subscribes"""
+def generate_pie_chart_url(weights):
+    """Generates a URL for a static pie chart image using QuickChart.io"""
+    labels = list(weights.keys())
+    data = list(weights.values())
+    
+    # Colors matching your theme (Dark Blue, Main Blue, Accent, etc)
+    colors = ["#03045e", "#0077b6", "#00b4d8", "#90e0ef", "#caf0f8", "#023e8a"]
+    
+    chart_config = {
+        "type": "doughnut",
+        "data": {
+            "labels": labels,
+            "datasets": [{
+                "data": data,
+                "backgroundColor": colors[:len(labels)]
+            }]
+        },
+        "options": {
+            "plugins": {
+                "legend": {"position": "right"},
+                "datalabels": {"display": True, "color": "white"}
+            }
+        }
+    }
+    
+    # Create the URL
+    base_url = "https://quickchart.io/chart"
+    params = {
+        'c': json.dumps(chart_config),
+        'w': 500,
+        'h': 300
+    }
+    return f"{base_url}?{urllib.parse.urlencode(params)}"
+
+def send_confirmation_email(to_email, weights, budget, selected_weeks, email_config):
+    
+    # 1. Setup Data
     weeks_text = ", ".join([f"Week {w}" for w in selected_weeks])
-    tickers_text = ", ".join(tickers)
+    
+    # Generate Chart Image URL
+    chart_url = generate_pie_chart_url(weights)
+    
+    # Generate Allocation List HTML (The pretty text version)
+    allocation_html = '<ul style="list-style-type: none; padding: 0;">'
+    for ticker, weight in weights.items():
+        allocation_html += f'<li style="margin-bottom: 5px;"><strong>{ticker}:</strong> {weight:.1f}%</li>'
+    allocation_html += '</ul>'
+    app_url = "https://yuehan-wang-smart-dca-app-cujodf.streamlit.app/"
     
     html_content = f"""
     <html>
     <head>
         <style>
-            body {{ font-family: Arial, sans-serif; color: #333; }}
-            .header {{ background-color: #03045e; color: white; padding: 20px; text-align: center; }}
-            .content {{ padding: 20px; }}
-            .info-box {{ background-color: #f0f0f0; padding: 15px; margin: 20px 0; border-radius: 5px; }}
-            .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 0.9em; color: #666; }}
+            body {{ font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; }}
+            .header {{ background-color: #03045e; color: white; padding: 25px; text-align: center; }}
+            .content {{ padding: 20px; max-width: 600px; margin: 0 auto; }}
+            .info-box {{ background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 5px solid #0096c7; }}
+            .chart-container {{ text-align: center; margin: 20px 0; }}
+            .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 0.9em; color: #666; text-align: center; }}
+            a {{ color: #0077b6; text-decoration: none; font-weight: bold; }}
         </style>
     </head>
     <body>
@@ -26,29 +74,32 @@ def send_confirmation_email(to_email, tickers, budget, selected_weeks, email_con
             <h1>Subscription Confirmed!</h1>
         </div>
         <div class="content">
-            <h2>Welcome to Smart DCA Email Notifications</h2>
-            <p>You've successfully subscribed to receive automated investment recommendations.</p>
+            <h2>Welcome to Smart DCA Notifications</h2>
+            <p>You've successfully subscribed. We will monitor your portfolio and tell you exactly when to buy aggressively.</p>
             
             <div class="info-box">
-                <h3>Your Subscription Details:</h3>
-                <p><strong>Portfolio:</strong> {tickers_text}</p>
-                <p><strong>Contribution Budget:</strong> ${budget:,.0f}</p>
-                <p><strong>Email Schedule:</strong> {weeks_text}</p>
-                <p><strong>Timing:</strong> First and last day of selected weeks</p>
+                <h3 style="margin-top:0;">Your Configuration</h3>
+                
+                <table style="width:100%">
+                    <tr>
+                        <td style="vertical-align:top; width:50%">
+                            <p><strong>Total Budget:</strong> ${budget:,.0f}</p>
+                            <p><strong>Schedule:</strong> {weeks_text}</p>
+                            <p><strong>Allocation:</strong></p>
+                            {allocation_html}
+                        </td>
+                        <td style="vertical-align:top; width:50%">
+                            <img src="{chart_url}" alt="Portfolio Allocation" width="100%" style="max-width: 250px; border-radius: 10px;">
+                        </td>
+                    </tr>
+                </table>
             </div>
             
-            <h3>When Will You Receive Emails?</h3>
-            <p>You'll receive investment recommendations on the <strong>first and last day</strong> of each selected week:</p>
-            <ul>
-                <li>Week 1: 1st and 7th of each month</li>
-                <li>Week 2: 8th and 14th of each month</li>
-                <li>Week 3: 15th and 21st of each month</li>
-                <li>Week 4: 22nd and last day of each month</li>
-            </ul>
+            <h3>Schedule</h3>
+            <p>Emails are sent on the <strong>first and last day</strong> of your selected weeks.</p>
             
             <div class="footer">
-                <p>Each email will contain personalized recommendations based on current market conditions and your portfolio settings.</p>
-                <p>To update or cancel your subscription, visit the Smart DCA app anytime.</p>
+                <p>To update or cancel your subscription, visit the <a href="{app_url}">Smart DCA app</a> anytime.</p>
             </div>
         </div>
     </body>
@@ -56,6 +107,38 @@ def send_confirmation_email(to_email, tickers, budget, selected_weeks, email_con
     """
     
     subject = "Smart DCA - Subscription Confirmed!"
+    return send_email(to_email, subject, html_content, email_config)
+
+def send_unsubscribe_email(to_email, email_config):
+    """Send a confirmation email when user unsubscribes"""
+    html_content = """
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; color: #333; }
+            .header { background-color: #03045e; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; text-align: center; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 0.9em; color: #666; }
+            a { color: #0077b6; text-decoration: none; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Unsubscribed</h1>
+        </div>
+        <div class="content">
+            <h2>You have been successfully unsubscribed.</h2>
+            <p>You will no longer receive investment recommendations from Smart DCA.</p>
+            <p>If this was a mistake, you can re-subscribe directly in the app.</p>
+            <div class="footer">
+                <p><a href="https://yuehan-wang-smart-dca-app-cujodf.streamlit.app/">Smart DCA</a></p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    subject = "Smart DCA - Unsubscription Confirmed"
     return send_email(to_email, subject, html_content, email_config)
 
 def generate_recommendation_email(tickers, weights_dict, budget, user_email):
@@ -132,7 +215,7 @@ def generate_recommendation_email(tickers, weights_dict, budget, user_email):
         </head>
         <body>
             <div class="header">
-                <h1>📈 Smart DCA Investment Recommendations</h1>
+                <h1>Smart DCA Investment Recommendations</h1>
                 <p>{datetime.now().strftime('%B %d, %Y')}</p>
             </div>
             <div class="content">
@@ -172,7 +255,7 @@ def generate_recommendation_email(tickers, weights_dict, budget, user_email):
                 
                 <div class="footer">
                     <p>This recommendation is based on the Smart DCA algorithm analyzing current market conditions.</p>
-                    <p>To manage your subscription or update your portfolio, visit the Smart DCA app.</p>
+                    <p>To manage your subscription or update your portfolio, visit the <a href="https://yuehan-wang-smart-dca-app-cujodf.streamlit.app/">Smart DCA app</a>.</p>
                 </div>
             </div>
         </body>
