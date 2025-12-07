@@ -1,12 +1,11 @@
 import pandas as pd
-from analysis import get_strategy_multiplier
+from analysis import get_strategy_v1, get_strategy_current
 
 def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_investment=0, enable_rebalancing=False, contribution_frequency='monthly'):
     total_weight = sum(weights.values())
     if total_weight == 0: return None
     norm_weights = {k: v/total_weight for k,v in weights.items()}
     
-    # Adjust budget for contribution frequency
     period_budget = monthly_budget if contribution_frequency == 'monthly' else monthly_budget / 4.33
     
     common_index = None
@@ -18,16 +17,15 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
     
     if contribution_frequency == 'weekly':
         contrib_dates = common_index.to_series().resample('W').last().index
-    else:  # monthly
-        # FIX: Changed 'M' to 'ME' (Month End) to resolve Pandas deprecation warning
+    else:
         contrib_dates = common_index.to_series().resample('ME').last().index
     
-    std_hist, smart_hist = [], []
-    std_inv, smart_inv = 0, 0
-    std_holdings = {t: 0.0 for t in tickers_data.keys()}
-    smart_holdings = {t: 0.0 for t in tickers_data.keys()}
+    # Init Histories for STD, V1, CURRENT
+    hist = {k: [] for k in ['std', 'v1', 'cur']}
+    inv = {k: 0.0 for k in ['std', 'v1', 'cur']}
+    holdings = {k: {t: 0.0 for t in tickers_data} for k in ['std', 'v1', 'cur']}
     
-    # Add initial investment if specified
+    # Initial Investment
     if initial_investment > 0:
         first_date = contrib_dates[0]
         for t in tickers_data.keys():
@@ -35,80 +33,85 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
             try:
                 idx = tickers_data[t].index.get_indexer([first_date], method='nearest')[0]
                 price = tickers_data[t].iloc[idx]['Close']
-                initial_alloc = initial_investment * norm_weights[t]
-                std_holdings[t] += initial_alloc / price
-                smart_holdings[t] += initial_alloc / price
-                std_inv += initial_alloc
-                smart_inv += initial_alloc
-            except:
-                continue
+                alloc = initial_investment * norm_weights[t]
+                for k in ['std', 'v1', 'cur']:
+                    holdings[k][t] += alloc / price
+                    inv[k] += alloc
+            except: continue
     
     rebalancing_events = []
     
     for i, date in enumerate(contrib_dates):
-        std_val, smart_val = 0, 0
+        vals = {k: 0.0 for k in ['std', 'v1', 'cur']}
         
         for t in tickers_data.keys():
             if t not in tickers_data: continue
             try:
-                # Find closest date if exact EOM missing
                 idx = tickers_data[t].index.get_indexer([date], method='nearest')[0]
                 row = tickers_data[t].iloc[idx]
                 price = row['Close']
-            except:
-                continue
+            except: continue
             
-            # --- Standard DCA ---
-            std_alloc = period_budget * norm_weights[t]
-            std_holdings[t] += std_alloc / price
-            std_inv += std_alloc
-            std_val += std_holdings[t] * price
+            # --- Indicators ---
+            vix_val = row.get('VIX', 20)
+            inds = {
+                'MA200': row.get('MA200', float('nan')), 
+                'MA50': row.get('MA50', float('nan')), 
+                'BB_Lower': row.get('BB_Lower', float('nan')), 
+                'BB_Upper': row.get('BB_Upper', float('nan')), 
+                'RSI': row.get('RSI', 50), 
+                'MACD_Hist': row.get('MACD_Hist', 0),
+                'Impulse': row.get('Impulse', 'Blue'),
+                'TNX': row.get('TNX', 4.0),
+                'TNX_MA50': row.get('TNX_MA50', 4.0)
+            }
             
-            # --- Smart DCA ---
-            vix_val = row['VIX']
+            base_alloc = period_budget * norm_weights[t]
             
-            # Ensure Impulse is passed (from previous fix)
-            inds = {'MA200': row['MA200'], 'MA50': row['MA50'], 
-                    'BB_Lower': row['BB_Lower'], 'BB_Upper': row['BB_Upper'], 
-                    'RSI': row['RSI'], 'MACD_Hist': row['MACD_Hist'],
-                    'Impulse': row['Impulse']}
+            # 1. Standard
+            holdings['std'][t] += base_alloc / price
+            inv['std'] += base_alloc
             
-            mult, _ = get_strategy_multiplier(price, inds, vix_val)
-            smart_alloc = (period_budget * norm_weights[t]) * mult
+            # 2. V1 (Original)
+            m1, _ = get_strategy_v1(price, inds, vix_val)
+            holdings['v1'][t] += (base_alloc * m1) / price
+            inv['v1'] += (base_alloc * m1)
             
-            smart_holdings[t] += smart_alloc / price
-            smart_inv += smart_alloc
-            smart_val += smart_holdings[t] * price
+            # 3. Current (Smart Impulse)
+            m_cur, _ = get_strategy_current(price, inds, vix_val)
+            holdings['cur'][t] += (base_alloc * m_cur) / price
+            inv['cur'] += (base_alloc * m_cur)
+
+            for k in ['std', 'v1', 'cur']:
+                vals[k] += holdings[k][t] * price
         
-        # Rebalancing logic
-        rebalanced = False
+        # Rebalancing
         if enable_rebalancing and i % (12 if contribution_frequency == 'monthly' else 52) == 0 and i > 0:
-            total_smart_value = sum(smart_holdings[t] * tickers_data[t].iloc[tickers_data[t].index.get_indexer([date], method='nearest')[0]]['Close'] 
-                                  for t in tickers_data.keys() if t in smart_holdings)
+            rebalanced = False
+            totals = {k: sum(holdings[k][t] * tickers_data[t].iloc[tickers_data[t].index.get_indexer([date], method='nearest')[0]]['Close'] for t in tickers_data if t in holdings[k]) for k in ['std', 'v1', 'cur']}
             
-            if total_smart_value > 0:
-                for t in tickers_data.keys():
-                    if t not in tickers_data: continue
-                    try:
-                        idx = tickers_data[t].index.get_indexer([date], method='nearest')[0]
-                        price = tickers_data[t].iloc[idx]['Close']
-                        target_value = total_smart_value * norm_weights[t]
-                        smart_holdings[t] = target_value / price
-                        rebalanced = True
-                    except:
-                        continue
-                        
-            if rebalanced:
-                rebalancing_events.append(date)
+            for t in tickers_data:
+                try:
+                    idx = tickers_data[t].index.get_indexer([date], method='nearest')[0]
+                    price = tickers_data[t].iloc[idx]['Close']
+                    for k in ['std', 'v1', 'cur']:
+                        if totals[k] > 0:
+                            holdings[k][t] = (totals[k] * norm_weights[t]) / price
+                    rebalanced = True
+                except: continue
+            if rebalanced: rebalancing_events.append(date)
             
-        std_hist.append(std_val)
-        smart_hist.append(smart_val)
+        for k in ['std', 'v1', 'cur']:
+            hist[k].append(vals[k])
         
     return {
         'dates': contrib_dates,
-        'std_val': std_hist, 'smart_val': smart_hist,
-        'std_invested': std_inv, 'smart_invested': smart_inv,
-        'rebalancing_events': rebalancing_events,
-        'initial_investment': initial_investment,
-        'contribution_frequency': contribution_frequency
+        # Standard
+        'std_val': hist['std'], 'std_invested': inv['std'],
+        # V1
+        'v1_val': hist['v1'], 'v1_invested': inv['v1'],
+        # Current
+        'smart_val': hist['cur'], 'smart_invested': inv['cur'], # Mapped to 'smart' for App UI
+        'cur_val': hist['cur'], 'cur_invested': inv['cur'],     # Explicit key for comparison script
+        'rebalancing_events': rebalancing_events
     }

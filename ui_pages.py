@@ -31,24 +31,33 @@ def show_manifesto_page():
             <p>We do not predict the future. We simply <b>react aggressively</b> to the price tags the market gives us.</p>
         </div>
         
-        <h3>The 4 Laws of the Algorithm</h3>
+        <h3>The 5 Laws of the Algorithm</h3>
+        
         <div class="law-box">
-            <span class="law-title">1. The Law of Crisis (VIX > 30 or < MA200 w/ Confluence)</span>
-            <strong>Blood in the streets</strong> is the greatest gift. We deploy <strong>Maximum Capital (2.0x)</strong> on high VIX. We also hunt for <strong>Deep Value (1.6x)</strong> when price is below the 200-day average.
-            <br><br>
-            <em>Crucial Update:</em> We added a <strong>"No Falling Knives"</strong> guard. If the asset is crashing (Red Impulse), we <strong>wait</strong> (1.0x). We only deploy the 1.6x multiplier when the momentum stabilizes (Blue/Green Impulse).
+            <span class="law-title">1. The Law of Crisis (VIX > 30)</span>
+            <strong>Blood in the streets</strong> is the greatest gift. When the Fear Index (VIX) screams panic, we do not run. We deploy <strong>Maximum Capital (2.0x)</strong> to capture generational bottoms.
         </div>
+
         <div class="law-box">
-            <span class="law-title">2. The Law of Opportunity (RSI < 35)</span>
-            Buy the <strong>Dip (1.4x)</strong> aggressively. We raised our sensitivity threshold to <strong>RSI 35</strong> to capture more buying opportunities during healthy bull market pullbacks.
+            <span class="law-title">2. The Law of Deep Value (Price < MA200 & RSI < 40)</span>
+            We hunt for quality assets trading below their long-term average (200-day MA). If the asset is also oversold (RSI < 40), we treat it as a <strong>Deep Value (1.6x)</strong> opportunity.
         </div>
+
         <div class="law-box">
-            <span class="law-title">3. The Law of Trend (MA50)</span>
-            A strong asset's pullback is a chance to fortify your position, so <strong>Add to Winners (1.2x)</strong> when price nears the primary trend.
+            <span class="law-title">3. The Law of Mean Reversion (BB Lower or RSI < 35)</span>
+            Statistical extremes must revert. If price pierces the <strong>Lower Bollinger Band</strong> or RSI drops below <strong>35</strong>, we catch the falling knife with precision <strong>(1.4x)</strong>.
         </div>
+
         <div class="law-box">
-            <span class="law-title">4. The Law of True Strength (Impulse MACD)</span>
-            When the market is hot (RSI > 70), we consult the <strong>Impulse System</strong>. If the bars are <strong>Green</strong> (Rising Momentum + Inertia), we hold standard buying (1.0x). If the bars turn <strong>Blue or Red</strong>, we cut back (0.6x) immediately to protect capital.
+            <span class="law-title">4. The Law of Trend & Macro (< MA50 or Falling Yields)</span>
+            We buy dips in healthy uptrends (Price < 50-day MA). We also accelerate investment when the macro environment provides a tailwind (falling 10-Year Treasury Yields). Both signal a <strong>(1.2x)</strong> increase.
+        </div>
+
+        <div class="law-box">
+            <span class="law-title">5. The Law of Discipline (Impulse System)</span>
+            In euphoria (RSI > 70), we trust the <strong>Impulse System</strong>. 
+            <br>• If bars are <strong>Green</strong>, momentum is strong: we hold standard buying (1.0x).
+            <br>• If bars turn <strong>Blue or Red</strong>, momentum is fading: we cut back immediately <strong>(0.6x)</strong> to protect capital.
         </div>
         """, unsafe_allow_html=True)
 
@@ -114,11 +123,17 @@ def show_dashboard_page(tickers, weights_dict):
                     price = curr['Close']
                     base_amt = contribution_budget * (weights_dict[t] / 100)
                     
-                    # UPDATED: Pass Impulse to strategy
-                    inds = {'MA200': curr['MA200'], 'MA50': curr['MA50'], 
-                            'BB_Lower': curr['BB_Lower'], 'BB_Upper': curr['BB_Upper'], 
-                            'RSI': curr['RSI'], 'MACD_Hist': curr['MACD_Hist'],
-                            'Impulse': curr['Impulse']}
+                    inds = {
+                        'MA200': curr.get('MA200', float('nan')), 
+                        'MA50': curr.get('MA50', float('nan')), 
+                        'BB_Lower': curr.get('BB_Lower', float('nan')), 
+                        'BB_Upper': curr.get('BB_Upper', float('nan')), 
+                        'RSI': curr.get('RSI', 50), 
+                        'MACD_Hist': curr.get('MACD_Hist', 0),
+                        'Impulse': curr.get('Impulse', 'Blue'),
+                        'TNX': curr.get('TNX', 4.0),         
+                        'TNX_MA50': curr.get('TNX_MA50', 4.0) 
+                    }
                     
                     mult, reason = get_strategy_multiplier(price, inds, current_vix)
                     final_amt = base_amt * mult
@@ -397,7 +412,6 @@ def show_backtest_page(tickers, weights_dict):
                     price = curr['Close']
                     actual_date = curr.name.strftime('%Y-%m-%d')
                     
-                    # UPDATED: Added Impulse to inspector
                     inds = {'MA200': curr['MA200'], 'MA50': curr['MA50'], 
                             'BB_Lower': curr['BB_Lower'], 'BB_Upper': curr['BB_Upper'], 
                             'RSI': curr['RSI'], 'MACD_Hist': curr['MACD_Hist'],
