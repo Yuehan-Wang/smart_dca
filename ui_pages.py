@@ -54,12 +54,34 @@ def show_manifesto_page():
         </div>
 
         <div class="law-box">
-            <span class="law-title">5. The Law of Discipline (Impulse System)</span>
-            In euphoria (RSI > 70), we trust the <strong>Impulse System</strong>. 
-            <br>• If bars are <strong>Green</strong>, momentum is strong: we hold standard buying (1.0x).
-            <br>• If bars turn <strong>Blue or Red</strong>, momentum is fading: we cut back immediately <strong>(0.6x)</strong> to protect capital.
+            <span class="law-title">5. The Law of Discipline (Impulse MACD)</span>
+            In euphoria (RSI > 70), we trust the <strong>Impulse MACD System</strong>. 
+            <br>• If bars are <strong>Green</strong> (Rising Momentum), we hold standard buying (1.0x) even if overbought.
+            <br>• If bars turn <strong>Blue or Red</strong> (Fading Momentum), we cut back immediately <strong>(0.6x)</strong> to protect capital.
         </div>
         """, unsafe_allow_html=True)
+        
+        # --- NEW IRON RULE SECTION ---
+        st.markdown("### The Iron Rule: Consistency > Perfection")
+        st.markdown("""
+        <div style="padding: 20px; background-color: #f8f9fa; border-left: 5px solid #666; border-radius: 5px; margin-bottom: 25px;">
+            <p style="font-size: 1.05rem; line-height: 1.6; color: #333;">
+                <b>This is NOT market timing.</b> Market timing is predictive <i>("I think the market will crash tomorrow")</i>. 
+                Smart DCA is reactive <i>("The market crashed yesterday, so I am buying more today")</i>.
+                <br><br>
+                We will never perfectly catch the bottom. The algorithm will sometimes buy early, and sometimes buy late. 
+                That is expected. The goal is not to be a fortune teller; the goal is to be <b>mathematically disciplined</b>. 
+                The only way this strategy fails is if you stop executing. The math works only if you show up.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.caption("""
+        **Disclaimer:** This application is for educational and informational purposes only and does not constitute financial advice, investment recommendations, or an offer to buy or sell any securities. 
+        The strategies presented are based on historical data and technical analysis, which are not guarantees of future performance. 
+        Investing in financial markets involves risk, including the possible loss of principal. You are solely responsible for your investment decisions. 
+        Please consult with a qualified financial advisor before making any investment choices.
+        """)
 
     with col2:
         # 1. The Warren Buffett Quote Box
@@ -78,10 +100,27 @@ def show_manifesto_page():
         <div style="margin-top: 20px; text-align: center;">
             <a href="https://www.yuehan.space/post/smart_dca" target="_blank" style="text-decoration: none;">
                 <div style="background-color: white; border: 1px solid #ddd; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.3s;">
-                    <span style="font-size: 1.5rem;"></span><br>
+                    <span style="font-size: 1.5rem;">📄</span><br>
                     <strong style="color: {COLOR_MAIN}; font-size: 1.1rem;">Read the Full Report</strong><br>
                     <span style="font-size: 0.85rem; color: #666;">See the math & performance comparison vs. Standard DCA.</span>
                 </div>
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 3. Open Source & Contact
+        st.markdown(f"""
+        <div style="margin-top: 20px; background-color: #f0f2f6; padding: 20px; border-radius: 10px;">
+            <h3 style="color:{COLOR_DARK}; margin-top:0; font-size: 1.2rem;">Open Source & Feedback</h3>
+            <p style="font-size: 0.9rem; color: #444;">
+                All logic and code for this project are publicly available. 
+                We believe financial tools should be open to inspection.
+            </p>
+            <p style="font-size: 0.9rem; color: #444;">
+                Have a suggestion for a new indicator? Found a bug? 
+            </p>
+            <a href="mailto:dmarc@yuehan.space" style="text-decoration: none; color: {COLOR_MAIN}; font-weight: bold;">
+            Let's chat
             </a>
         </div>
         """, unsafe_allow_html=True)
