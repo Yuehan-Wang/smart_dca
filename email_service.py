@@ -1,11 +1,26 @@
+import logging
 import os
 import requests
-import resend
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
+
+try:
+    import resend  # type: ignore[import-not-found]
+except ModuleNotFoundError:
+    resend = None  # type: ignore[assignment]
+    logger.warning("Optional dependency 'resend' not installed; email features disabled.")
+
 # Load API Key
-resend.api_key = os.environ.get('RESEND_API_KEY')
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 FROM_EMAIL = os.environ.get('FROM_EMAIL', 'Smart DCA <onboarding@resend.dev>')
+
+def _ensure_resend():
+    if resend is None:
+        raise RuntimeError("Install the 'resend' package (`pip install resend`) to enable Smart DCA email features.")
+    if RESEND_API_KEY and getattr(resend, 'api_key', None) != RESEND_API_KEY:
+        resend.api_key = RESEND_API_KEY
+    return resend
 
 def generate_pie_chart_url(weights):
     """
@@ -44,10 +59,13 @@ def generate_pie_chart_url(weights):
 
 def send_confirmation_email(user_email, weights, budget, weeks, email_config=None):
     """Sends a subscription confirmation email."""
-    
+    resend_module = _ensure_resend()
+
     # Use config if passed (for local testing), else env vars
     if email_config:
-        resend.api_key = email_config.get('api_key')
+        api_key = email_config.get('api_key')
+        if api_key:
+            resend_module.api_key = api_key
         sender = email_config.get('from_email', FROM_EMAIL)
     else:
         sender = FROM_EMAIL
@@ -84,7 +102,7 @@ def send_confirmation_email(user_email, weights, budget, weeks, email_config=Non
     """
 
     try:
-        r = resend.Emails.send({
+        r = resend_module.Emails.send({
             "from": sender,
             "to": user_email,
             "subject": "Smart DCA: Subscription Confirmed",
@@ -97,8 +115,11 @@ def send_confirmation_email(user_email, weights, budget, weeks, email_config=Non
 
 def send_unsubscribe_email(user_email, email_config=None):
     """Sends an unsubscribe confirmation."""
+    resend_module = _ensure_resend()
     if email_config:
-        resend.api_key = email_config.get('api_key')
+        api_key = email_config.get('api_key')
+        if api_key:
+            resend_module.api_key = api_key
         sender = email_config.get('from_email', FROM_EMAIL)
     else:
         sender = FROM_EMAIL
@@ -112,7 +133,7 @@ def send_unsubscribe_email(user_email, email_config=None):
     """
 
     try:
-        resend.Emails.send({
+        resend_module.Emails.send({
             "from": sender,
             "to": user_email,
             "subject": "Smart DCA: Unsubscribed",
@@ -125,6 +146,7 @@ def send_notification_email(user_email, action_data, total_invest, weights):
     """
     Sends the weekly/monthly action report.
     """
+    resend_module = _ensure_resend()
     chart_url = generate_pie_chart_url(weights)
     
     # Build the action table HTML
@@ -182,7 +204,7 @@ def send_notification_email(user_email, action_data, total_invest, weights):
     """
 
     try:
-        resend.Emails.send({
+        resend_module.Emails.send({
             "from": FROM_EMAIL,
             "to": user_email,
             "subject": f"Smart DCA Alert: Deploy ${total_invest:,.0f}",
