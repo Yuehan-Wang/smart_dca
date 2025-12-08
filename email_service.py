@@ -107,7 +107,7 @@ def send_confirmation_email(user_email, weights, budget, weeks, email_config=Non
             
             <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="font-size: 12px; color: #888; text-align: center;">
-                You can update your preferences or unsubscribe at any time via the Smart DCA dashboard.
+                You can update your preferences or unsubscribe at any time via the <a href="https://yuehan-wang-smart-dca-app-cujodf.streamlit.app/" style="color: #2a9d8f; text-decoration: none;">Smart DCA</a> dashboard.
             </p>
         </div>
     </div>
@@ -117,7 +117,7 @@ def send_confirmation_email(user_email, weights, budget, weeks, email_config=Non
         r = resend_module.Emails.send({
             "from": sender,
             "to": user_email,
-            "subject": "Smart DCA: Subscription Confirmed ✅",
+            "subject": "Smart DCA: Subscription Confirmed",
             "html": html_content
         })
         return r
@@ -242,7 +242,7 @@ def send_notification_email(user_email, action_data, total_invest, weights):
         resend_module.Emails.send({
             "from": FROM_EMAIL,
             "to": user_email,
-            "subject": f"Smart DCA Alert: Deploy ${total_invest:,.0f} 🚀",
+            "subject": f"Smart DCA Alert: Deploy ${total_invest:,.0f}",
             "html": html_content
         })
         return True
