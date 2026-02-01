@@ -58,7 +58,9 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
                 'MA200': row.get('MA200', float('nan')), 
                 'MA50': row.get('MA50', float('nan')), 
                 'BB_Lower': row.get('BB_Lower', float('nan')), 
-                'BB_Upper': row.get('BB_Upper', float('nan')), 
+                'BB_Upper': row.get('BB_Upper', float('nan')),
+                'BB_PctB': row.get('BB_PctB', 0.5),
+                'Dist_MA200': row.get('Dist_MA200', 0),
                 'RSI': row.get('RSI', 50), 
                 'MACD_Hist': row.get('MACD_Hist', 0),
                 'Impulse': row.get('Impulse', 'Blue'),
@@ -77,8 +79,8 @@ def run_portfolio_backtest(tickers_data, weights, monthly_budget, initial_invest
             holdings['v1'][t] += (base_alloc * m1) / price
             inv['v1'] += (base_alloc * m1)
             
-            # 3. Current (Smart Impulse)
-            m_cur, _ = get_strategy_current(price, inds, vix_val)
+            # 3. Current (Smart Impulse with Pro improvements)
+            m_cur, _ = get_strategy_current(price, inds, vix_val, ticker=t)
             holdings['cur'][t] += (base_alloc * m_cur) / price
             inv['cur'] += (base_alloc * m_cur)
 
