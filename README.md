@@ -16,4 +16,4 @@ A Streamlit web application designed to implement and backtest a dynamic Dollar-
 
 ## Email Subscription Setup
 
-Users can subscribe to receive automated investment recommendations via email. See [EMAIL_SETUP.md](EMAIL_SETUP.md) for detailed setup instructions.
+Users can subscribe to receive automated investment recommendations via email.
